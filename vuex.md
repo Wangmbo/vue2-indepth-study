@@ -70,7 +70,14 @@ export const SOME_MUTATION = 'SOME_MUTATION'
 ```javascript
 import Vuex from 'vuex'
 import { SOME_MUTATION } from './mutation-types'
-...
+const store = new Vuex.Store({
+  state: {},
+  mutations: {
+    [SOME_MUTATION](state) {
+      // mutate state
+    }
+  }
+})
 ```
 
 
@@ -79,19 +86,25 @@ import { SOME_MUTATION } from './mutation-types'
 
 Why?
 
-异步进行的回调函数中进行的状态的改变是不可追踪的。
-
-
-
-`mapMutations`
-
-
-
-? 追踪变化
+异步进行的回调函数中进行的状态的改变是不可追踪的，当mutation触发时，回调函数还没有被调用，devtools不知道什么时候回调函数实际上被调用—实质上任何在回调函数中进行的状态的改变都是不可追踪的。
 
 
 
 
 
 
+
+#### Action
+
+Action类似于mutation，不同在于：
+
++ Action 提交的是mutation，而不是直接变更状态
++ Action可以包含任意异步操作
++ 进行异步操作完毕之后通过提交mutation来记录action产生的副作用（即状态变更）。
+
+
+
+#### Module
+
+> Vuex 允许我们将store分割成模块，每个模块拥有自己的state、mutation、action、getter、甚至是嵌套子模块 - 从上之下进行同样方式的分割
 

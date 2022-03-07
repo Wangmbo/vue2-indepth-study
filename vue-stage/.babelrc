@@ -1,0 +1,6 @@
+{
+  "presets": [
+    // 使用这个预设包
+    "@babel/preset-env"
+  ]
+}

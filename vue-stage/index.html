@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script src="./dist/vue.js"></script>
+  
+  <script>
+    const app = new Vue({
+      el: '#app',
+      data: () => {
+        return { 
+          // test: 'wave',
+          // testObj: {
+          //   wave: {
+          //     age: 18
+          //   }
+          // },
+          // arr: [1],
+          arr1: [{ name: 'sky' }],
+          test: 'test'
+        }
+      }
+    })
+    // console.log(app.test, '_data')
+    // console.log(app.arr)
+    // console.log(app.arr.push(1))
+    // console.log(app.arr)
+    // console.log(arr);
+    console.log(app.arr1[0], '?')
+    console.log(app.arr1[0].name)
+    app.arr1[0].name = 'wave'
+    console.log(app.arr1[0], 'app.arr1[0]')
+    // 希望直接.name。。。
+    app.test = 'wave'
+  </script>
+</body>
+</html>
