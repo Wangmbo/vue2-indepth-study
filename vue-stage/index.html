@@ -8,6 +8,7 @@
 </head>
 <body>
   <script src="./dist/vue.js"></script>
+  <div id="app" style="color: red;">hello {{ test }} world</div>
   
   <script>
     const app = new Vue({
@@ -21,22 +22,16 @@
           //   }
           // },
           // arr: [1],
-          arr1: [{ name: 'sky' }],
-          test: 'test'
+          arr1: [{ name: 'wave' }],
+          test: 'test wave'
         }
       }
     })
-    // console.log(app.test, '_data')
-    // console.log(app.arr)
-    // console.log(app.arr.push(1))
-    // console.log(app.arr)
-    // console.log(arr);
-    console.log(app.arr1[0], '?')
-    console.log(app.arr1[0].name)
-    app.arr1[0].name = 'wave'
-    console.log(app.arr1[0], 'app.arr1[0]')
-    // 希望直接.name。。。
-    app.test = 'wave'
+    const obj = {
+      name: 'sky'
+    }
+    app.arr1.push(obj)
+    console.log(app.arr1)
   </script>
 </body>
 </html>

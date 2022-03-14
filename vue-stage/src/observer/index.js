@@ -1,7 +1,15 @@
 import { isObject } from "../utils";
 import { arrayMethods } from './array'
+
+// 如果数据是对象 会将对象不停地递归 进行劫持
+// 如果是数组， 会劫持数组的方法，并对数组中不是基本数据类型的进行检测
 class Observe {
   constructor(data) { // 对对象中的所有属性进行劫持
+    Object.defineProperty(data, '__ob__', {
+      value: this,
+      enumerable: false
+    })
+    // data.__ob__ = this
     if(Array.isArray(data)) {
       // 数组劫持的逻辑
       // 核心思想是对数组的方法进行劫持
@@ -47,6 +55,7 @@ function defineReactive(data, key, value) {
 
 // import { isObject } from '../utils'
 export function observe(data) {
+  if(data.__ob__) return
   // 如果是对象才观测
   if(!isObject(data)) return
   // if(!isObject(data)) return
