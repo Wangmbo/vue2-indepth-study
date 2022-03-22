@@ -46,6 +46,59 @@
     return _typeof(val) === 'object' && val != null;
   }
 
+  function flushCallBacks() {
+    callbacks.forEach(function (cb) {
+      return cb();
+    });
+    watting = false;
+  }
+
+  var callbacks = [];
+  var watting = false;
+
+  function timerFn() {}
+
+  if (Promise) {
+    timerFn = function timerFn() {
+      Promise.resolve().then(flushCallBacks);
+    };
+  } else if (MutationObserver) {
+    var textNode = document.createTextNode(1);
+    var observe$1 = new MutationObserver(flushCallBacks);
+    observe$1.observe(textNode, {
+      characterData: true
+    });
+
+    timerFn = function timerFn() {
+      textNode.textContent = 3;
+    }; // 微任务
+
+  } else if (setImmediate) {
+    timerFn = function timerFn() {
+      setImmediate(flushCallBacks);
+    };
+  } else {
+    timerFn = function timerFn() {
+      setTimeout(flushCallBacks);
+    };
+  }
+
+  function nextTick(cb) {
+    callbacks.push(cb);
+
+    if (!watting) {
+      // TODO 这里面到底用啥比较好
+      // vue2 考虑了兼容性问题
+      // vue3 直接用的Promise
+      timerFn();
+      watting = true;
+    }
+  } // TODO 异步更新原理 记录nextTick 原理
+  // TODO 微任务是在页面渲染前执行，但是我取的是内存中的dom，不关心你渲染完毕没有
+  // dom树已经更新了...
+  // Promise.then
+  // 明天整理归纳
+
   var arrayMethods = Object.create(Array.prototype);
   var oldArrayPrototype = Array.prototype;
   var methods = ['push', 'shift', 'pop', 'unshift', 'reverse', 'splice', 'sort'];
@@ -83,6 +136,53 @@
       return result;
     };
   });
+
+  var id$1 = 0;
+
+  var Dep = /*#__PURE__*/function () {
+    // 每个属性都分配一个dep， dep可以存放watcher，watcher还要存放这个dep
+    function Dep() {
+      _classCallCheck(this, Dep);
+
+      this.id = id$1++;
+      this.subs = []; //用来存放watcher
+    }
+
+    _createClass(Dep, [{
+      key: "depend",
+      value: function depend() {
+        if (Dep.target) {
+          Dep.target.addDep(this);
+        } // Dep.target dep
+
+      }
+    }, {
+      key: "addSub",
+      value: function addSub(watcher) {
+        this.subs.push(watcher);
+      }
+    }, {
+      key: "notify",
+      value: function notify() {
+        // TODO 会被多次更新...
+        this.subs.forEach(function (item) {
+          item.update();
+        });
+      }
+    }]);
+
+    return Dep;
+  }();
+  Dep.target = null;
+  function pushTarget(watcher) {
+    Dep.target = watcher;
+  }
+  function popTarget() {
+    Dep.target = null;
+  } // TODO watcher 和 dep 之间的关系...
+  // 依赖和watcher之间的关系
+  // 依赖和收集依赖
+  // 多对多的关系..
 
   // 如果是数组， 会劫持数组的方法，并对数组中不是基本数据类型的进行检测
 
@@ -133,15 +233,27 @@
     observe(value); // TODO Object.defineProperties
 
     console.log(data, 'data');
+    var dep = new Dep(); // 每个属性都有一个dep属性
+
     Object.defineProperty(data, key, {
       get: function get() {
-        console.log(key, 'get');
+        // 取值时我希望将watcher和dep对应起来
+        // console.log(key, 'get ')
+        // Dep.target
+        if (Dep.target) {
+          // 此值是在模板中取值的
+          dep.depend(); // 让dep
+        }
+
         return value;
       },
       set: function set(val) {
+        if (val === value) return;
         console.log(key, val, 'set');
-        observe(value);
+        observe(value); // 如果用户赋值了一个新对象， 需要对这个新对象进行劫持
+
         value = val;
+        dep.notify(); // 通知dep属性更新
       }
     });
   } // import { isObject } from '../utils'
@@ -446,22 +558,159 @@
   } // html => ast(只能描述语法 语法不存在的属性无法描述) => render函数 + （width + new Function）  => 虚拟dom => 生成真实dom
   // TODO with 函数 正则函数..
 
+  var queue = [];
+  var has = {}; // 做列表维护 存放了哪些watcher
+
+  var pedding = false;
+
+  function flushSchedulerQueue() {
+    queue.forEach(function (item) {
+      item.run();
+    });
+    queue = [];
+    has = {};
+    pedding = false;
+  } // 同一个watcher
+  // 多次dep修改只会执行更新一次
+
+
+  function queueWacther(watcher) {
+    // 当前执行栈中代码执行完毕后，会先清空微任务，再清空宏任务，我希望更早的渲染
+    var id = watcher.id;
+
+    if (!has[id]) {
+      queue.push(watcher);
+      has[id] = true;
+    }
+
+    if (!pedding) {
+      // 数据更新完毕之后拿到最新的dom内容
+      // 如果用户不停的写定时器，会开启多个线程
+      nextTick(flushSchedulerQueue); // setTimeout(flushSchedulerQueue, 0)
+
+      pedding = true;
+    }
+  } // 使用setTimeout
+
+  var id = 0;
+
+  var Watcher = /*#__PURE__*/function () {
+    function Watcher(vm, exprOrFn, cb, options) {
+      _classCallCheck(this, Watcher);
+
+      this.vm = vm;
+      this.exprOrFn = exprOrFn;
+      this.cb = cb;
+      this.options = options;
+      this.id = id++; // 默认执行
+      // this.exprOrFn() // 生成render 
+
+      this.getter = exprOrFn;
+      this.deps = [];
+      this.depsId = new Set();
+      this.get();
+    } // 用户更新时重新调用getter方法
+
+
+    _createClass(Watcher, [{
+      key: "get",
+      value: function get() {
+        //  defineProperty.get
+        //  每个属性都可以收集自己的watcher
+        // 我希望一个属性可以对应多个watcher 同时一个watcher对应多个属性
+        pushTarget(this); // 每一个组件都有一个watcher 组件渲染之前会建立这个watcher 并且将属性的依赖和该watcher关联起来
+
+        this.getter();
+        popTarget();
+      }
+    }, {
+      key: "run",
+      value: function run() {
+        console.log('run');
+        this.get();
+      }
+    }, {
+      key: "update",
+      value: function update() {
+        queueWacther(this); // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
+      }
+    }, {
+      key: "addDep",
+      value: function addDep(dep) {
+        var id = dep.id;
+
+        if (!this.depsId.has(id)) {
+          this.depsId.add(id);
+          this.deps.push(dep);
+          dep.addSub(this);
+        }
+      }
+    }]);
+
+    return Watcher;
+  }(); // 明天抽时间整理
+
+  function patch(oldVnode, vnode) {
+    if (oldVnode.nodeType == 1) {
+      // 真实元素
+      // 用vnode 来生成真实dom替换成原本的dom元素
+      // 删除原来的节点 然后用虚拟节点生成的dom放置到老节点的下一个节点
+      var parentElm = oldVnode.parentNode;
+      var elm = createEle(vnode); // 在第一次渲染后 删除掉节点， 下次无法获取
+
+      parentElm.insertBefore(elm, oldVnode.nextSibling);
+      parentElm.removeChild(oldVnode);
+      return elm;
+    }
+  }
+
+  function createEle(vnode) {
+    var tag = vnode.tag;
+        vnode.data;
+        var children = vnode.children,
+        text = vnode.text;
+        vnode.vm;
+
+    if (typeof vnode.tag === 'string') {
+      vnode.el = document.createElement(tag); // 虚拟节点会有一个el属性对应真实节点
+
+      children.forEach(function (child) {
+        vnode.el.appendChild(createEle(child));
+      });
+    } else {
+      vnode.el = document.createTextNode(text);
+    }
+
+    return vnode.el;
+  }
+
   function lifecycleMixin(Vue) {
     Vue.prototype._update = function (vnode) {
-      console.log('update vnode', vnode);
-    };
-  }
-  function mountComponent(vm, el) {
-    console.log(vm, el); // 更新函数 数据变化后 会再次调用此函数
+      console.log('update vnode-----', vnode); // 初始化 更新
+      // 既有初始化 又有更新 比较前后差异
 
+      var vm = this;
+      vm.$el = patch(vm.$el, vnode); // 更新不需要重新的词法分析，只需要重新调用render
+      // 不管怎么样初始的html是固定的
+      // 将虚拟dom生成真实dom
+    };
+  } // 后续每个组件渲染的时候都有一个watcher
+
+  function mountComponent(vm, el) {
+    // 更新函数 数据变化后 会再次调用此函数
     var updateComponent = function updateComponent() {
       // 调用render函数 生成虚拟dom
       vm._update(vm._render()); // 后续更新可以调用updateCompoennt方法
       // 用虚拟dom生成真实dom
+      // 重新调用render方法产生虚拟dom 目前还没有diff
 
     };
 
-    updateComponent();
+    vm.$nextTick = nextTick; // 观察者模式 属性是被观察者  属性页面：观察者
+
+    new Watcher(vm, updateComponent, function () {
+      console.log('更新视图了');
+    }, true); // 它是一个渲染watcher 后续有其他的watcher
   }
 
   function initMixin(Vue) {
@@ -485,6 +734,7 @@
       var vm = this;
       var options = vm.$options;
       el = document.querySelector(el);
+      vm.$el = el;
 
       if (!options.render) {
         var template = options.template;
@@ -501,7 +751,7 @@
 
       console.log(options.render, 'render...'); // 调用render 渲染真实dom 替换掉页面的内容
 
-      mountComponent(vm, el); // 组件的挂载流程
+      mountComponent(vm); // 组件的挂载流程
     };
   } // 把模板转化成 对应的渲染函数 =》 虚拟dom概念 vnode =》 diff 算法 更新虚拟dom => 产生真实节点，更新
   //  vm.$options render 函数 就不用将模板转为渲染函数了
@@ -555,7 +805,8 @@
 
     Vue.prototype._s = function (val) {
       // return this[val]
-      return JSON.stringify(val);
+      if (_typeof(val) === 'object') return JSON.stringify(val);
+      return val;
     };
 
     Vue.prototype._render = function () {

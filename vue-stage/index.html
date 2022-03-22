@@ -23,7 +23,7 @@
           // },
           // arr: [1],
           arr1: [{ name: 'wave' }],
-          test: 'test wave'
+          test: "wave"
         }
       }
     })
@@ -32,6 +32,22 @@
     }
     app.arr1.push(obj)
     console.log(app.arr1)
+    setTimeout(() => {
+      app.test = 'sky'
+      app.test = 'sky1'
+      app.test = 'sky2'
+
+      app.$nextTick(() => {
+        // dom树已经更新了..
+        console.log(document.querySelector('div'))
+        console.log(app.$el, 'el')
+        console.log()
+      })
+      console.log(document.querySelector('div'))
+    }, 1000)
+    // app._update(app._render()) // 后续更新可以调用updateCompoennt方法
+
+    // 数据变化需要影响视图
   </script>
 </body>
 </html>

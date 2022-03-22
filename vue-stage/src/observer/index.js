@@ -1,5 +1,6 @@
 import { isObject } from "../utils";
 import { arrayMethods } from './array'
+import Dep from "./dep";
 
 // 如果数据是对象 会将对象不停地递归 进行劫持
 // 如果是数组， 会劫持数组的方法，并对数组中不是基本数据类型的进行检测
@@ -40,15 +41,23 @@ function defineReactive(data, key, value) {
   observe(value)
   // TODO Object.defineProperties
   console.log(data, 'data')
+  let dep = new Dep() // 每个属性都有一个dep属性
   Object.defineProperty(data, key, {
     get() {
-      console.log(key, 'get')
+      // 取值时我希望将watcher和dep对应起来
+      // console.log(key, 'get ')
+      // Dep.target
+      if(Dep.target) { // 此值是在模板中取值的
+        dep.depend() // 让dep
+      }
       return value
     },
     set(val) {
+      if(val ===  value) return
       console.log(key, val, 'set')
-      observe(value)
+      observe(value) // 如果用户赋值了一个新对象， 需要对这个新对象进行劫持
       value = val
+      dep.notify() // 通知dep属性更新
     }
   })
 }

@@ -11,7 +11,8 @@ export function renderMixin(Vue) {
   }
   Vue.prototype._s = function(val) {
     // return this[val]
-    return JSON.stringify(val)
+    if(typeof val === 'object') return JSON.stringify(val)
+    return val
   }
 
   Vue.prototype._render = function() {
