@@ -1,3 +1,11 @@
+/*
+ * @Descripttion: 
+ * @version: 
+ * @Author: 
+ * @Date: 2022-03-13 11:36:34
+ * @LastEditors: 
+ * @LastEditTime: 2022-03-28 23:44:59
+ */
 // TODO 梳理整个思路。。。
 // 看一下用户是否传入了 render 
 // 未传入render ，没传入可能传入的是template，如果template也没有传递
@@ -26,12 +34,13 @@ function gen (el) {
     if(!defaultTagRE.test(text)) {
       return `_v('${text}')`
     } else {
-      // 'hello' + arr + 'world'
+      // hello{{arr}}world => 'hello' + arr + 'world'
       let tokens = []
       let match
       let lastIndex = defaultTagRE.lastIndex = 0
       // console.log(text, 'text')
       // console.log(defaultTagRE.exec(text))
+      
       while(match = defaultTagRE.exec(text)) {
         let index = match.index // 开始索引
         // console.log(index, 'lastIndex')

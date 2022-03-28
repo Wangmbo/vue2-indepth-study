@@ -5,13 +5,28 @@ let id = 0
 class Watcher {
   constructor(vm, exprOrFn, cb, options) {
     this.vm = vm
-    this.exprOrFn = exprOrFn
     this.cb = cb
     this.options = options
     this.id = id++
     // 默认执行
-    // this.exprOrFn() // 生成render 
-    this.getter = exprOrFn
+    // this.exprOrFn() // 生成render
+    if(typeof exprOrFn === 'string') {
+      this.getter = function() {
+        console.log(exprOrFn, 'exprOrFn..')
+        // 将表达式转化为函数
+        // TODO.. 取值...
+        // TODO 分析..
+        const result = exprOrFn.split('.').reduce((total, cur) => {
+          return total = total[cur]
+        }, this.vm)
+        console.log(result)
+        // debugger
+        return result
+      }
+       
+    } else {
+     this.getter = exprOrFn  
+    }
     this.deps = []
     this.depsId = new Set()
     this.get()
@@ -23,16 +38,23 @@ class Watcher {
     // 我希望一个属性可以对应多个watcher 同时一个watcher对应多个属性
     pushTarget(this)
     // 每一个组件都有一个watcher 组件渲染之前会建立这个watcher 并且将属性的依赖和该watcher关联起来
-    this.getter()
+    const value = this.getter()
+
     popTarget()
+
+    return value
   }
   run() {
-    console.log('run')
-    this.get()
+    const newVal = this.get()
+    console.log(this.options.user, 'this.options.user')
+    if(this.options.user) {
+      this.cb.call(this, this.value, newVal)
+      this.value = newVal
+    }
   }
   update() {
-    queueWacther(this)
     // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
+    queueWacther(this)
   }
   addDep(dep) {
     const id = dep.id

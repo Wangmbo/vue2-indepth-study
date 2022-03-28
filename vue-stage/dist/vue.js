@@ -128,11 +128,14 @@
           break;
       }
 
-      console.log(this.__ob__);
+      if (addList) this.__ob__.observeArray(addList); // TODO 梳理关系
+      // 数组的 observer.dep 属性
+      // 为什么数组要有dep 
+      // 因为调用方法时 数组更新 需要 调用dep的notify更新数据...
+      // 给数组配置一个dep ,让dep记住这个watcher 数组一旦变化 让这个watcher 更新.
 
-      this.__ob__.observeArray(addList);
+      this.__ob__.dep.notify();
 
-      console.log(addList, 'addList');
       return result;
     };
   });
@@ -185,18 +188,22 @@
   // 多对多的关系..
 
   // 如果是数组， 会劫持数组的方法，并对数组中不是基本数据类型的进行检测
+  // 如果给对象新增一个属性不会触发视图更新 $set 给对象本身也增加一个watcher 如果增加一个属性后，我就手动的触发watcher的更新
 
   var Observe = /*#__PURE__*/function () {
     function Observe(data) {
       _classCallCheck(this, Observe);
 
       // 对对象中的所有属性进行劫持
+      this.dep = new Dep(); // 数据可能是数组或者对象
+
       Object.defineProperty(data, '__ob__', {
         value: this,
         enumerable: false
       }); // data.__ob__ = this
 
       if (Array.isArray(data)) {
+        // 数组的变化可以触发视图更新
         // 数组劫持的逻辑
         // 核心思想是对数组的方法进行劫持
         // 对数组原来的方法进行改写，切片编程 高阶函数
@@ -219,7 +226,6 @@
     }, {
       key: "observeArray",
       value: function observeArray(data) {
-        // console.log(data, 'observeArray')
         data.forEach(function (item) {
           observe(item);
         });
@@ -229,27 +235,41 @@
     return Observe;
   }();
 
-  function defineReactive(data, key, value) {
-    observe(value); // TODO Object.defineProperties
+  function dependArray(value) {
+    value.forEach(function (item) {
+      item.__ob__ && item.__ob__.dep && item.__ob__.dep.depend();
+      if (Array.isArray(item)) dependArray(item);
+    });
+  }
 
-    console.log(data, 'data');
+  function defineReactive(data, key, value) {
+    var childOb = observe(value); // TODO Object.defineProperties
+
     var dep = new Dep(); // 每个属性都有一个dep属性
 
     Object.defineProperty(data, key, {
       get: function get() {
         // 取值时我希望将watcher和dep对应起来
-        // console.log(key, 'get ')
         // Dep.target
         if (Dep.target) {
           // 此值是在模板中取值的
           dep.depend(); // 让dep
+
+          if (childOb) {
+            // 可能是对象可能是数组，对象也要收集依赖，$set
+            // 设置值的时候
+            childOb.dep.depend(); // 让数组和对象也记录watcher
+
+            if (Array.isArray(value)) {
+              dependArray(value);
+            }
+          }
         }
 
         return value;
       },
       set: function set(val) {
         if (val === value) return;
-        console.log(key, val, 'set');
         observe(value); // 如果用户赋值了一个新对象， 需要对这个新对象进行劫持
 
         value = val;
@@ -260,7 +280,7 @@
 
 
   function observe(data) {
-    if (data.__ob__) return; // 如果是对象才观测
+    if (data.__ob__) return data.__ob__; // 如果是对象才观测
 
     if (!isObject(data)) return; // if(!isObject(data)) return
 
@@ -272,6 +292,136 @@
   // 重写了push shift pop unshift reverse sort splice
   // 这几个方法
 
+  var queue = [];
+  var has = {}; // 做列表维护 存放了哪些watcher
+
+  var pedding = false;
+
+  function flushSchedulerQueue() {
+    queue.forEach(function (item) {
+      item.run();
+    });
+    queue = [];
+    has = {};
+    pedding = false;
+  } // 同一个watcher
+  // 多次dep修改只会执行更新一次
+
+
+  function queueWacther(watcher) {
+    // 当前执行栈中代码执行完毕后，会先清空微任务，再清空宏任务，我希望更早的渲染
+    var id = watcher.id;
+
+    if (!has[id]) {
+      queue.push(watcher);
+      has[id] = true;
+    }
+
+    if (!pedding) {
+      // 数据更新完毕之后拿到最新的dom内容
+      // 如果用户不停的写定时器，会开启多个线程
+      nextTick(flushSchedulerQueue); // setTimeout(flushSchedulerQueue, 0)
+
+      pedding = true;
+    }
+  } // 使用setTimeout
+
+  var id = 0;
+
+  var Watcher = /*#__PURE__*/function () {
+    function Watcher(vm, exprOrFn, cb, options) {
+      _classCallCheck(this, Watcher);
+
+      this.vm = vm;
+      this.cb = cb;
+      this.options = options;
+      this.id = id++; // 默认执行
+      // this.exprOrFn() // 生成render
+
+      if (typeof exprOrFn === 'string') {
+        this.getter = function () {
+          console.log(exprOrFn, 'exprOrFn..'); // 将表达式转化为函数
+          // TODO.. 取值...
+          // TODO 分析..
+
+          var result = exprOrFn.split('.').reduce(function (total, cur) {
+            return total = total[cur];
+          }, this.vm);
+          console.log(result); // debugger
+
+          return result;
+        };
+      } else {
+        this.getter = exprOrFn;
+      }
+
+      this.deps = [];
+      this.depsId = new Set();
+      this.get();
+    } // 用户更新时重新调用getter方法
+
+
+    _createClass(Watcher, [{
+      key: "get",
+      value: function get() {
+        //  defineProperty.get
+        //  每个属性都可以收集自己的watcher
+        // 我希望一个属性可以对应多个watcher 同时一个watcher对应多个属性
+        pushTarget(this); // 每一个组件都有一个watcher 组件渲染之前会建立这个watcher 并且将属性的依赖和该watcher关联起来
+
+        var value = this.getter();
+        popTarget();
+        return value;
+      }
+    }, {
+      key: "run",
+      value: function run() {
+        var newVal = this.get();
+        console.log(this.options.user, 'this.options.user');
+
+        if (this.options.user) {
+          this.cb.call(this, this.value, newVal);
+          this.value = newVal;
+        }
+      }
+    }, {
+      key: "update",
+      value: function update() {
+        // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
+        queueWacther(this);
+      }
+    }, {
+      key: "addDep",
+      value: function addDep(dep) {
+        var id = dep.id;
+
+        if (!this.depsId.has(id)) {
+          this.depsId.add(id);
+          this.deps.push(dep);
+          dep.addSub(this);
+        }
+      }
+    }]);
+
+    return Watcher;
+  }(); // 明天抽时间整理
+
+  /*
+   * @Descripttion: 
+   * @version: 
+   * @Author: 
+   * @Date: 2022-03-07 01:07:15
+   * @LastEditors: Please set LastEditors
+   * @LastEditTime: 2022-03-27 12:33:41
+   */
+  function stateMixin(Vue) {
+    Vue.prototype.$watch = function (key, handler) {
+      var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+      options.user = true; // console.log(this, key, handler, options, 'this, key, handler, options');
+
+      new Watcher(this, key, handler, options);
+    };
+  }
   function initState(vm) {
     var opts = vm.$options;
 
@@ -280,6 +430,10 @@
     }
 
     if (opts.props) ;
+
+    if (opts.watch) {
+      initWatch(vm, opts.watch);
+    }
   }
 
   function initData(vm) {
@@ -288,14 +442,13 @@
     // defineProperty
     // 判断类型
 
-    console.log(data);
     data = vm._data = isFuntion(data) ? data.call(vm) : data;
 
     for (var key in data) {
       proxy(vm, '_data', key);
     }
 
-    observe(data); // console.log(data)
+    observe(data);
   }
 
   function proxy(vm, source, key) {
@@ -308,6 +461,24 @@
       }
     });
   }
+
+  function initWatch(vm, watch) {
+    var _loop = function _loop(key) {
+      var watchItem = watch[key]; // 不考虑多配置项.
+
+      if (Array.isArray(watchItem)) {
+        watchItem.forEach(function (item) {
+          vm.$watch(key, item);
+        });
+      } else {
+        vm.$watch(key, watchItem);
+      }
+    };
+
+    for (var key in watch) {
+      _loop(key);
+    }
+  } // 属性中的依赖既有渲染watcher 也有 用户自定义的 watcher
 
   var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
   var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z".concat(unicodeRegExp.source, "]*"); // 标签名
@@ -458,6 +629,14 @@
     return root;
   }
 
+  /*
+   * @Descripttion: 
+   * @version: 
+   * @Author: 
+   * @Date: 2022-03-13 11:36:34
+   * @LastEditors: 
+   * @LastEditTime: 2022-03-28 23:44:59
+   */
   // TODO 梳理整个思路。。。
   // 看一下用户是否传入了 render 
   // 未传入render ，没传入可能传入的是template，如果template也没有传递
@@ -484,7 +663,7 @@
       if (!defaultTagRE.test(text)) {
         return "_v('".concat(text, "')");
       } else {
-        // 'hello' + arr + 'world'
+        // hello{{arr}}world => 'hello' + arr + 'world'
         var tokens = [];
         var match;
         var lastIndex = defaultTagRE.lastIndex = 0; // console.log(text, 'text')
@@ -557,98 +736,6 @@
     return render;
   } // html => ast(只能描述语法 语法不存在的属性无法描述) => render函数 + （width + new Function）  => 虚拟dom => 生成真实dom
   // TODO with 函数 正则函数..
-
-  var queue = [];
-  var has = {}; // 做列表维护 存放了哪些watcher
-
-  var pedding = false;
-
-  function flushSchedulerQueue() {
-    queue.forEach(function (item) {
-      item.run();
-    });
-    queue = [];
-    has = {};
-    pedding = false;
-  } // 同一个watcher
-  // 多次dep修改只会执行更新一次
-
-
-  function queueWacther(watcher) {
-    // 当前执行栈中代码执行完毕后，会先清空微任务，再清空宏任务，我希望更早的渲染
-    var id = watcher.id;
-
-    if (!has[id]) {
-      queue.push(watcher);
-      has[id] = true;
-    }
-
-    if (!pedding) {
-      // 数据更新完毕之后拿到最新的dom内容
-      // 如果用户不停的写定时器，会开启多个线程
-      nextTick(flushSchedulerQueue); // setTimeout(flushSchedulerQueue, 0)
-
-      pedding = true;
-    }
-  } // 使用setTimeout
-
-  var id = 0;
-
-  var Watcher = /*#__PURE__*/function () {
-    function Watcher(vm, exprOrFn, cb, options) {
-      _classCallCheck(this, Watcher);
-
-      this.vm = vm;
-      this.exprOrFn = exprOrFn;
-      this.cb = cb;
-      this.options = options;
-      this.id = id++; // 默认执行
-      // this.exprOrFn() // 生成render 
-
-      this.getter = exprOrFn;
-      this.deps = [];
-      this.depsId = new Set();
-      this.get();
-    } // 用户更新时重新调用getter方法
-
-
-    _createClass(Watcher, [{
-      key: "get",
-      value: function get() {
-        //  defineProperty.get
-        //  每个属性都可以收集自己的watcher
-        // 我希望一个属性可以对应多个watcher 同时一个watcher对应多个属性
-        pushTarget(this); // 每一个组件都有一个watcher 组件渲染之前会建立这个watcher 并且将属性的依赖和该watcher关联起来
-
-        this.getter();
-        popTarget();
-      }
-    }, {
-      key: "run",
-      value: function run() {
-        console.log('run');
-        this.get();
-      }
-    }, {
-      key: "update",
-      value: function update() {
-        queueWacther(this); // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
-      }
-    }, {
-      key: "addDep",
-      value: function addDep(dep) {
-        var id = dep.id;
-
-        if (!this.depsId.has(id)) {
-          this.depsId.add(id);
-          this.deps.push(dep);
-          dep.addSub(this);
-        }
-      }
-    }]);
-
-    return Watcher;
-  }(); // 明天抽时间整理
 
   function patch(oldVnode, vnode) {
     if (oldVnode.nodeType == 1) {
@@ -829,7 +916,8 @@
 
   initMixin(Vue);
   renderMixin(Vue);
-  lifecycleMixin(Vue); // renderMixin() // _render
+  lifecycleMixin(Vue);
+  stateMixin(Vue); // renderMixin() // _render
 
   return Vue;
 

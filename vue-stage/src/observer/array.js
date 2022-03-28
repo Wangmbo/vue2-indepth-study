@@ -21,9 +21,14 @@ methods.forEach(method => {
         break;
       default:
     }
-    console.log(this.__ob__)
-    this.__ob__.observeArray(addList)
-    console.log(addList, 'addList')
+    if(addList) this.__ob__.observeArray(addList)
+    // TODO 梳理关系
+    // 数组的 observer.dep 属性
+    // 为什么数组要有dep 
+    // 因为调用方法时 数组更新 需要 调用dep的notify更新数据...
+    // 给数组配置一个dep ,让dep记住这个watcher 数组一旦变化 让这个watcher 更新.
+    this.__ob__.dep.notify()
+
     return result
   }
 })

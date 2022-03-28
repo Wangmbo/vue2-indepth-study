@@ -1,17 +1,29 @@
+/*
+ * @Descripttion: 
+ * @version: 
+ * @Author: 
+ * @Date: 2022-03-07 01:18:16
+ * @LastEditors: 
+ * @LastEditTime: 2022-03-27 12:22:27
+ */
 import { isObject } from "../utils";
 import { arrayMethods } from './array'
 import Dep from "./dep";
 
 // 如果数据是对象 会将对象不停地递归 进行劫持
 // 如果是数组， 会劫持数组的方法，并对数组中不是基本数据类型的进行检测
+
+// 如果给对象新增一个属性不会触发视图更新 $set 给对象本身也增加一个watcher 如果增加一个属性后，我就手动的触发watcher的更新
 class Observe {
   constructor(data) { // 对对象中的所有属性进行劫持
+    this.dep = new Dep() // 数据可能是数组或者对象
+
     Object.defineProperty(data, '__ob__', {
       value: this,
       enumerable: false
     })
     // data.__ob__ = this
-    if(Array.isArray(data)) {
+    if(Array.isArray(data)) { // 数组的变化可以触发视图更新
       // 数组劫持的逻辑
       // 核心思想是对数组的方法进行劫持
       // 对数组原来的方法进行改写，切片编程 高阶函数
@@ -30,31 +42,42 @@ class Observe {
   }
 
   observeArray(data) {
-    // console.log(data, 'observeArray')
     data.forEach(item => {
       observe(item)
     })
   }
 }
 
+function dependArray(value) {
+  value.forEach(item => {
+    item.__ob__&&item.__ob__.dep&&item.__ob__.dep.depend()
+    if(Array.isArray(item)) dependArray(item)
+  })
+}
+
 function defineReactive(data, key, value) {
-  observe(value)
+  const childOb = observe(value)
   // TODO Object.defineProperties
-  console.log(data, 'data')
   let dep = new Dep() // 每个属性都有一个dep属性
   Object.defineProperty(data, key, {
     get() {
       // 取值时我希望将watcher和dep对应起来
-      // console.log(key, 'get ')
       // Dep.target
       if(Dep.target) { // 此值是在模板中取值的
         dep.depend() // 让dep
+
+        if(childOb) { // 可能是对象可能是数组，对象也要收集依赖，$set
+          // 设置值的时候
+          childOb.dep.depend() // 让数组和对象也记录watcher
+          if(Array.isArray(value)) {
+            dependArray(value)
+          }
+        }
       }
       return value
     },
     set(val) {
       if(val ===  value) return
-      console.log(key, val, 'set')
       observe(value) // 如果用户赋值了一个新对象， 需要对这个新对象进行劫持
       value = val
       dep.notify() // 通知dep属性更新
@@ -64,7 +87,7 @@ function defineReactive(data, key, value) {
 
 // import { isObject } from '../utils'
 export function observe(data) {
-  if(data.__ob__) return
+  if(data.__ob__) return data.__ob__
   // 如果是对象才观测
   if(!isObject(data)) return
   // if(!isObject(data)) return

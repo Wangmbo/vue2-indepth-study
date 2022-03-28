@@ -8,10 +8,11 @@
 </head>
 <body>
   <script src="./dist/vue.js"></script>
-  <div id="app" style="color: red;">hello {{ test }} world</div>
+  <div id="app" style="color: red;">hello {{ test }} world {{ wave.attr.age }} {{ arr1 }} {{ arr2 }}</div>
   
   <script>
-    const app = new Vue({
+    const arr2 = [[[1, 2, 3]]]
+    const app = new Vue({ // watcher 渲染watcher
       el: '#app',
       data: () => {
         return { 
@@ -23,8 +24,24 @@
           // },
           // arr: [1],
           arr1: [{ name: 'wave' }],
-          test: "wave"
+          test: "wave",
+          wave: {   // JSON.stringfy 对所有内层都进行了get 所以都进行了依赖收集
+            attr: {
+              age: 18
+            }
+          },
+          arr2
         }
+      },
+      watch: {
+        test(newVal, oldValue) {
+          console.log(newVal, oldValue, '???77777')
+        },
+        'wave.attr.age'(newVal, oldValue) {
+          console.log(newVal, oldValue, 'watch')
+        }
+        // 数组写法
+        // 对象写法
       }
     })
     const obj = {
@@ -46,8 +63,29 @@
       console.log(document.querySelector('div'))
     }, 1000)
     // app._update(app._render()) // 后续更新可以调用updateCompoennt方法
-
+    app.wave = {
+      attr: {
+        age: 19
+      }
+    }
+    app.wave.attr.age = 20
     // 数据变化需要影响视图
+    // app.arr1.push(1)
+    // 无效.
+    // app.arr2[0].push(6)
+    setTimeout(() => {
+      console.log('666---')
+      arr2[0][0].push(7)
+    }, 2000)
+    
+    setTimeout(() => {
+      app.test = 'fuck'
+      console.log(app.test)
+    }, 3000)
+
+    // Vue 嵌套层次不能太深，否则会有大量递归
+    // 对象上不存的属性不会拦截,也不会响应,可以使用$set 让对象自己去收集notify
+    // vue中数组改变索引和长度是不会更新的，通过重写的方法去修改数组会进行更新
   </script>
 </body>
 </html>
