@@ -39,6 +39,14 @@
     return Constructor;
   }
 
+  /*
+   * @Descripttion: 
+   * @version: 
+   * @Author: 
+   * @Date: 2022-03-07 01:13:42
+   * @LastEditors: 
+   * @LastEditTime: 2022-04-02 00:08:59
+   */
   function isFuntion(data) {
     return typeof data === 'function';
   }
@@ -98,6 +106,7 @@
   // dom树已经更新了...
   // Promise.then
   // 明天整理归纳
+  // TODO
 
   var arrayMethods = Object.create(Array.prototype);
   var oldArrayPrototype = Array.prototype;
@@ -140,6 +149,14 @@
     };
   });
 
+  /*
+   * @Descripttion: 
+   * @version: 
+   * @Author: 
+   * @Date: 2022-03-16 22:10:33
+   * @LastEditors: Please set LastEditors
+   * @LastEditTime: 2022-03-30 16:56:30
+   */
   var id$1 = 0;
 
   var Dep = /*#__PURE__*/function () {
@@ -292,6 +309,14 @@
   // 重写了push shift pop unshift reverse sort splice
   // 这几个方法
 
+  /*
+   * @Descripttion: 
+   * @version: 
+   * @Author: 
+   * @Date: 2022-03-21 21:34:43
+   * @LastEditors: Please set LastEditors
+   * @LastEditTime: 2022-03-30 22:31:37
+   */
   var queue = [];
   var has = {}; // 做列表维护 存放了哪些watcher
 
@@ -397,7 +422,8 @@
 
         if (!this.depsId.has(id)) {
           this.depsId.add(id);
-          this.deps.push(dep);
+          this.deps.push(dep); // 如果该watcher没收集过该dep,那么dep也要反向手机watcher
+
           dep.addSub(this);
         }
       }

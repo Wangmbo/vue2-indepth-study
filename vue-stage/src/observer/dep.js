@@ -1,3 +1,11 @@
+/*
+ * @Descripttion: 
+ * @version: 
+ * @Author: 
+ * @Date: 2022-03-16 22:10:33
+ * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2022-03-30 16:56:30
+ */
 let id = 0;
 export default class Dep {  // 每个属性都分配一个dep， dep可以存放watcher，watcher还要存放这个dep
   constructor() {

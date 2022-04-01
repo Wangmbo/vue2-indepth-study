@@ -61,6 +61,7 @@ class Watcher {
     if(!this.depsId.has(id)) {
       this.depsId.add(id)
       this.deps.push(dep)
+      // 如果该watcher没收集过该dep,那么dep也要反向手机watcher
       dep.addSub(this)
     }
   }

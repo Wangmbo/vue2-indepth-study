@@ -73,15 +73,16 @@
     // app.arr1.push(1)
     // 无效.
     // app.arr2[0].push(6)
-    setTimeout(() => {
-      console.log('666---')
-      arr2[0][0].push(7)
-    }, 2000)
+    // setTimeout(() => {
+    //   console.log('666---')
+    //   arr2[0][0].push(7)
+    // }, 2000)
     
     setTimeout(() => {
+      console.log('???')
       app.test = 'fuck'
-      console.log(app.test)
-    }, 3000)
+      console.log(app.test, 'app.test----------')
+    }, 2000)
 
     // Vue 嵌套层次不能太深，否则会有大量递归
     // 对象上不存的属性不会拦截,也不会响应,可以使用$set 让对象自己去收集notify

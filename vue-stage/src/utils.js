@@ -1,3 +1,11 @@
+/*
+ * @Descripttion: 
+ * @version: 
+ * @Author: 
+ * @Date: 2022-03-07 01:13:42
+ * @LastEditors: 
+ * @LastEditTime: 2022-04-02 00:08:59
+ */
 export function isFuntion(data) {
   return typeof data === 'function'
 }
@@ -58,3 +66,4 @@ export function nextTick(cb) {
 // Promise.then
 
 // 明天整理归纳
+// TODO 

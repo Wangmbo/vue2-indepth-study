@@ -1,3 +1,11 @@
+/*
+ * @Descripttion: 
+ * @version: 
+ * @Author: 
+ * @Date: 2022-03-21 21:34:43
+ * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2022-03-30 22:31:37
+ */
 import { nextTick } from "../utils"
 
 let queue = []
