@@ -13,13 +13,9 @@ class Watcher {
     if(typeof exprOrFn === 'string') {
       this.getter = function() {
         console.log(exprOrFn, 'exprOrFn..')
-        // 将表达式转化为函数
-        // TODO.. 取值...
-        // TODO 分析..
         const result = exprOrFn.split('.').reduce((total, cur) => {
           return total = total[cur]
         }, this.vm)
-        console.log(result)
         // debugger
         return result
       }

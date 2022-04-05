@@ -365,14 +365,10 @@
 
       if (typeof exprOrFn === 'string') {
         this.getter = function () {
-          console.log(exprOrFn, 'exprOrFn..'); // 将表达式转化为函数
-          // TODO.. 取值...
-          // TODO 分析..
-
+          console.log(exprOrFn, 'exprOrFn..');
           var result = exprOrFn.split('.').reduce(function (total, cur) {
             return total = total[cur];
-          }, this.vm);
-          console.log(result); // debugger
+          }, this.vm); // debugger
 
           return result;
         };
