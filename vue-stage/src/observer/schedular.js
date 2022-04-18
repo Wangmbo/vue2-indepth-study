@@ -4,7 +4,7 @@
  * @Author: 
  * @Date: 2022-03-21 21:34:43
  * @LastEditors: Please set LastEditors
- * @LastEditTime: 2022-03-30 22:31:37
+ * @LastEditTime: 2022-04-07 00:30:17
  */
 import { nextTick } from "../utils"
 
@@ -23,6 +23,7 @@ function flushSchedulerQueue() {
 // 多次dep修改只会执行更新一次
 export function queueWacther(watcher) { // 当前执行栈中代码执行完毕后，会先清空微任务，再清空宏任务，我希望更早的渲染
   const id = watcher.id
+  // console.log(watcher, 'watcher')
   if(!has[id]) {
     queue.push(watcher)
     has[id] = true

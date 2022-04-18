@@ -43,9 +43,68 @@
    * @Descripttion: 
    * @version: 
    * @Author: 
+   * @Date: 2022-03-16 22:10:33
+   * @LastEditors: Please set LastEditors
+   * @LastEditTime: 2022-04-08 00:25:20
+   */
+  var id$1 = 0;
+
+  var Dep = /*#__PURE__*/function () {
+    // 每个属性都分配一个dep， dep可以存放watcher，watcher还要存放这个dep
+    function Dep() {
+      _classCallCheck(this, Dep);
+
+      this.id = id$1++;
+      this.subs = []; //用来存放watcher
+    }
+
+    _createClass(Dep, [{
+      key: "depend",
+      value: function depend() {
+        if (Dep.target) {
+          Dep.target.addDep(this);
+        } // Dep.target dep
+
+      }
+    }, {
+      key: "addSub",
+      value: function addSub(watcher) {
+        // console.log(watcher, 'watcher??');
+        this.subs.push(watcher);
+      }
+    }, {
+      key: "notify",
+      value: function notify() {
+        this.subs.forEach(function (item) {
+          item.update();
+        });
+      }
+    }]);
+
+    return Dep;
+  }();
+  Dep.target = null;
+  var stack$1 = [];
+  function pushTarget(watcher) {
+    stack$1.push(watcher); // console.log(Dep.target, 'Dep.target??')
+
+    Dep.target = watcher;
+  }
+  function popTarget() {
+    stack$1.pop();
+    Dep.target = stack$1[stack$1.length - 1];
+  } // TODO watcher 和 dep 之间的关系...
+  // 依赖和watcher之间的关系
+  // 依赖和收集依赖
+  // 多对多的关系..
+
+  /*
+   * @Descripttion: 
+   * @version: 
+   * @Author: 
    * @Date: 2022-03-07 01:13:42
-   * @LastEditors: 
-   * @LastEditTime: 2022-04-02 00:08:59
+   * @LastEditors: Please set LastEditors
+   * @LastEditTime: 2022-04-18 21:53:08
    */
   function isFuntion(data) {
     return typeof data === 'function';
@@ -101,6 +160,10 @@
       timerFn();
       watting = true;
     }
+  }
+  function isReservedTab(str) {
+    var strs = 'a,div,span,p,img';
+    return strs.includes(str);
   } // TODO 异步更新原理 记录nextTick 原理
   // TODO 微任务是在页面渲染前执行，但是我取的是内存中的dom，不关心你渲染完毕没有
   // dom树已经更新了...
@@ -148,61 +211,6 @@
       return result;
     };
   });
-
-  /*
-   * @Descripttion: 
-   * @version: 
-   * @Author: 
-   * @Date: 2022-03-16 22:10:33
-   * @LastEditors: Please set LastEditors
-   * @LastEditTime: 2022-03-30 16:56:30
-   */
-  var id$1 = 0;
-
-  var Dep = /*#__PURE__*/function () {
-    // 每个属性都分配一个dep， dep可以存放watcher，watcher还要存放这个dep
-    function Dep() {
-      _classCallCheck(this, Dep);
-
-      this.id = id$1++;
-      this.subs = []; //用来存放watcher
-    }
-
-    _createClass(Dep, [{
-      key: "depend",
-      value: function depend() {
-        if (Dep.target) {
-          Dep.target.addDep(this);
-        } // Dep.target dep
-
-      }
-    }, {
-      key: "addSub",
-      value: function addSub(watcher) {
-        this.subs.push(watcher);
-      }
-    }, {
-      key: "notify",
-      value: function notify() {
-        // TODO 会被多次更新...
-        this.subs.forEach(function (item) {
-          item.update();
-        });
-      }
-    }]);
-
-    return Dep;
-  }();
-  Dep.target = null;
-  function pushTarget(watcher) {
-    Dep.target = watcher;
-  }
-  function popTarget() {
-    Dep.target = null;
-  } // TODO watcher 和 dep 之间的关系...
-  // 依赖和watcher之间的关系
-  // 依赖和收集依赖
-  // 多对多的关系..
 
   // 如果是数组， 会劫持数组的方法，并对数组中不是基本数据类型的进行检测
   // 如果给对象新增一个属性不会触发视图更新 $set 给对象本身也增加一个watcher 如果增加一个属性后，我就手动的触发watcher的更新
@@ -268,6 +276,8 @@
       get: function get() {
         // 取值时我希望将watcher和dep对应起来
         // Dep.target
+        console.log(Dep.target, 'Dep.targetDep.targetDep.targetDep.target', key);
+
         if (Dep.target) {
           // 此值是在模板中取值的
           dep.depend(); // 让dep
@@ -290,6 +300,7 @@
         observe(value); // 如果用户赋值了一个新对象， 需要对这个新对象进行劫持
 
         value = val;
+        console.log(val);
         dep.notify(); // 通知dep属性更新
       }
     });
@@ -315,7 +326,7 @@
    * @Author: 
    * @Date: 2022-03-21 21:34:43
    * @LastEditors: Please set LastEditors
-   * @LastEditTime: 2022-03-30 22:31:37
+   * @LastEditTime: 2022-04-07 00:30:17
    */
   var queue = [];
   var has = {}; // 做列表维护 存放了哪些watcher
@@ -335,7 +346,7 @@
 
   function queueWacther(watcher) {
     // 当前执行栈中代码执行完毕后，会先清空微任务，再清空宏任务，我希望更早的渲染
-    var id = watcher.id;
+    var id = watcher.id; // console.log(watcher, 'watcher')
 
     if (!has[id]) {
       queue.push(watcher);
@@ -360,15 +371,20 @@
       this.vm = vm;
       this.cb = cb;
       this.options = options;
+      this.lazy = options.lazy;
+      this.dirty = options.lazy;
       this.id = id++; // 默认执行
       // this.exprOrFn() // 生成render
+
+      console.log(vm, 'vm'); // debugger
 
       if (typeof exprOrFn === 'string') {
         this.getter = function () {
           console.log(exprOrFn, 'exprOrFn..');
           var result = exprOrFn.split('.').reduce(function (total, cur) {
+            // console.log(total, this.vm)
             return total = total[cur];
-          }, this.vm); // debugger
+          }, this); // debugger
 
           return result;
         };
@@ -378,7 +394,7 @@
 
       this.deps = [];
       this.depsId = new Set();
-      this.get();
+      if (!this.lazy) this.get();
     } // 用户更新时重新调用getter方法
 
 
@@ -388,17 +404,18 @@
         //  defineProperty.get
         //  每个属性都可以收集自己的watcher
         // 我希望一个属性可以对应多个watcher 同时一个watcher对应多个属性
+        // console.log(this, 'pushTarget(this)')
         pushTarget(this); // 每一个组件都有一个watcher 组件渲染之前会建立这个watcher 并且将属性的依赖和该watcher关联起来
 
-        var value = this.getter();
+        var value = this.getter.call(this.vm); // console.log(value, value, 'value')
+
         popTarget();
         return value;
       }
     }, {
       key: "run",
       value: function run() {
-        var newVal = this.get();
-        console.log(this.options.user, 'this.options.user');
+        var newVal = this.get(); // console.log(this.options.user, 'this.options.user')
 
         if (this.options.user) {
           this.cb.call(this, this.value, newVal);
@@ -408,8 +425,12 @@
     }, {
       key: "update",
       value: function update() {
-        // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
-        queueWacther(this);
+        if (this.lazy) {
+          this.dirty = true;
+        } else {
+          // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
+          queueWacther(this);
+        }
       }
     }, {
       key: "addDep",
@@ -423,6 +444,21 @@
           dep.addSub(this);
         }
       }
+    }, {
+      key: "execute",
+      value: function execute() {
+        this.dirty = false;
+        this.value = this.get();
+      }
+    }, {
+      key: "depend",
+      value: function depend() {
+        var i = this.deps.length;
+
+        while (i--) {
+          this.deps[i].depend();
+        }
+      }
     }]);
 
     return Watcher;
@@ -434,7 +470,7 @@
    * @Author: 
    * @Date: 2022-03-07 01:07:15
    * @LastEditors: Please set LastEditors
-   * @LastEditTime: 2022-03-27 12:33:41
+   * @LastEditTime: 2022-04-08 00:27:08
    */
   function stateMixin(Vue) {
     Vue.prototype.$watch = function (key, handler) {
@@ -452,6 +488,10 @@
     }
 
     if (opts.props) ;
+
+    if (opts.computed) {
+      initComputed(vm, opts.computed);
+    }
 
     if (opts.watch) {
       initWatch(vm, opts.watch);
@@ -500,7 +540,47 @@
     for (var key in watch) {
       _loop(key);
     }
+  }
+
+  function createComputedGetter(key) {
+    return function computedGetter() {
+      var watcher = this._computedGetters[key];
+
+      if (watcher.dirty) {
+        watcher.execute();
+      } // 如果当前取完值后 Dep.target还有值 需要继续向上收集
+
+
+      if (Dep.target) {
+        watcher.depend();
+      }
+
+      return watcher.value;
+    };
   } // 属性中的依赖既有渲染watcher 也有 用户自定义的 watcher
+
+
+  function initComputed(vm, computed) {
+    var computedGetters = vm._computedGetters = {};
+
+    for (var key in computed) {
+      var userDef = computed[key];
+      var getter = typeof userDef === 'function' ? userDef : userDef.get;
+      computedGetters[key] = new Watcher(vm, getter, function () {}, {
+        lazy: true
+      });
+      defineComputed(vm, key, userDef);
+    }
+  }
+
+  function defineComputed(vm, key, userDef) {
+    var propertyConfig = {};
+    propertyConfig.get = createComputedGetter(key);
+    propertyConfig.set = typeof userDef === 'function' ? undefined : userDef.set;
+    Object.defineProperty(vm, key, propertyConfig);
+  } // 当页面中直接写fullname时， fullname不会去收集渲染wacther fullname 没有dep 没有收集功能。
+  // firstName 是在计算属性中使用的，所以他会收集计算属性watcher，没有收集渲染wathcher。
+  // 计算属性中的值应该记录计算属性wacther和渲染watcher
 
   var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
   var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z".concat(unicodeRegExp.source, "]*"); // 标签名
@@ -869,13 +949,16 @@
 
   function createElement(vm, tagName) {
     var data = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
-
-    for (var _len = arguments.length, children = new Array(_len > 3 ? _len - 3 : 0), _key = 3; _key < _len; _key++) {
-      children[_key - 3] = arguments[_key];
-    }
-
     // console.log(vm, tagName, data = {}, ...children, 'createElement')
-    return vnode(vm, tagName, data, data.key, children, undefined);
+    console.log(tagName, 'tagName'); // 如果tag是一个组件 应该渲染一个组件的vnode
+
+    if (isReservedTab(tag)) {
+      for (var _len = arguments.length, children = new Array(_len > 3 ? _len - 3 : 0), _key = 3; _key < _len; _key++) {
+        children[_key - 3] = arguments[_key];
+      }
+
+      return vnode(vm, tagName, data, data.key, children, undefined);
+    }
   }
   function createTextElement(vm, text) {
     // console.log(vm, text, 'createTextElement')

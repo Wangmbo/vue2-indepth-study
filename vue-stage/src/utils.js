@@ -3,8 +3,8 @@
  * @version: 
  * @Author: 
  * @Date: 2022-03-07 01:13:42
- * @LastEditors: 
- * @LastEditTime: 2022-04-02 00:08:59
+ * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2022-04-18 21:53:08
  */
 export function isFuntion(data) {
   return typeof data === 'function'
@@ -57,6 +57,11 @@ export function nextTick(cb) {
     timerFn()
     watting = true
   }
+}
+
+export function isReservedTab(str) {
+  let strs = 'a,div,span,p,img'
+  return strs.includes(str)
 }
 
 // TODO 异步更新原理 记录nextTick 原理

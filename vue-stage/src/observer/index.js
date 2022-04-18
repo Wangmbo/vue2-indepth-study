@@ -3,8 +3,8 @@
  * @version: 
  * @Author: 
  * @Date: 2022-03-07 01:18:16
- * @LastEditors: 
- * @LastEditTime: 2022-03-27 12:22:27
+ * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2022-04-08 00:25:49
  */
 import { isObject } from "../utils";
 import { arrayMethods } from './array'
@@ -63,6 +63,7 @@ function defineReactive(data, key, value) {
     get() {
       // 取值时我希望将watcher和dep对应起来
       // Dep.target
+      console.log(Dep.target, 'Dep.targetDep.targetDep.targetDep.target', key)
       if(Dep.target) { // 此值是在模板中取值的
         dep.depend() // 让dep
 
@@ -80,6 +81,7 @@ function defineReactive(data, key, value) {
       if(val ===  value) return
       observe(value) // 如果用户赋值了一个新对象， 需要对这个新对象进行劫持
       value = val
+      console.log(val)
       dep.notify() // 通知dep属性更新
     }
   })

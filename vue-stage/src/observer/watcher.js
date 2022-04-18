@@ -7,15 +7,20 @@ class Watcher {
     this.vm = vm
     this.cb = cb
     this.options = options
+    this.lazy = options.lazy
+    this.dirty = options.lazy
     this.id = id++
     // 默认执行
     // this.exprOrFn() // 生成render
+    console.log(vm, 'vm')
+    // debugger
     if(typeof exprOrFn === 'string') {
       this.getter = function() {
         console.log(exprOrFn, 'exprOrFn..')
-        const result = exprOrFn.split('.').reduce((total, cur) => {
+        const result = exprOrFn.split('.').reduce(function (total, cur) {
+          // console.log(total, this.vm)
           return total = total[cur]
-        }, this.vm)
+        }, this)
         // debugger
         return result
       }
@@ -25,32 +30,37 @@ class Watcher {
     }
     this.deps = []
     this.depsId = new Set()
-    this.get()
+    if(!this.lazy) this.get()
   }
   // 用户更新时重新调用getter方法
   get() {
     //  defineProperty.get
     //  每个属性都可以收集自己的watcher
     // 我希望一个属性可以对应多个watcher 同时一个watcher对应多个属性
+    // console.log(this, 'pushTarget(this)')
     pushTarget(this)
     // 每一个组件都有一个watcher 组件渲染之前会建立这个watcher 并且将属性的依赖和该watcher关联起来
-    const value = this.getter()
-
+    const value = this.getter.call(this.vm)
+    // console.log(value, value, 'value')
     popTarget()
 
     return value
   }
   run() {
     const newVal = this.get()
-    console.log(this.options.user, 'this.options.user')
+    // console.log(this.options.user, 'this.options.user')
     if(this.options.user) {
       this.cb.call(this, this.value, newVal)
       this.value = newVal
     }
   }
   update() {
-    // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
-    queueWacther(this)
+    if(this.lazy) {
+      this.dirty = true
+    } else {
+      // 多次调用update 我希望将wathcer缓存下来，等一会一起更新
+      queueWacther(this)
+    }
   }
   addDep(dep) {
     const id = dep.id
@@ -59,6 +69,17 @@ class Watcher {
       this.deps.push(dep)
       // 如果该watcher没收集过该dep,那么dep也要反向手机watcher
       dep.addSub(this)
+    }
+  }
+  execute() {
+    this.dirty = false
+    this.value = this.get()
+  }
+
+  depend() {
+    let i = this.deps.length
+    while(i--) {
+      this.deps[i].depend()
     }
   }
 }

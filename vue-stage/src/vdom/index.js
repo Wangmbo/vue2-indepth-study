@@ -1,6 +1,19 @@
+import { isReservedTab } from "../utils"
+
 export function createElement(vm, tagName, data = {}, ...children) {
   // console.log(vm, tagName, data = {}, ...children, 'createElement')
-  return vnode(vm, tagName, data, data.key, children, undefined)
+  console.log(tagName, 'tagName')
+
+  // 如果tag是一个组件 应该渲染一个组件的vnode
+
+  if(isReservedTab(tag)) {
+    return vnode(vm, tagName, data, data.key, children, undefined)
+  } else {
+    // vm.$options.components
+    // return cr
+  }
+
+
 }
 
 export function createTextElement(vm ,text) {
